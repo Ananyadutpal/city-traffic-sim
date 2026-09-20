@@ -1,0 +1,105 @@
+{
+  "strategies": {
+    "light (300)": {
+      "static": {
+        "avg_trip_s": 170.3,
+        "p95_trip_s": 370.8,
+        "unfinished": 0,
+        "reroutes": 0
+      },
+      "adaptive": {
+        "avg_trip_s": 156.3,
+        "p95_trip_s": 302.4,
+        "unfinished": 0,
+        "reroutes": 0
+      },
+      "dynamic": {
+        "avg_trip_s": 150.0,
+        "p95_trip_s": 267.2,
+        "unfinished": 0,
+        "reroutes": 14
+      },
+      "dynamic_vs_static_pct": 11.9,
+      "dynamic_vs_adaptive_pct": 4.0
+    },
+    "medium (600)": {
+      "static": {
+        "avg_trip_s": 234.9,
+        "p95_trip_s": 707.8,
+        "unfinished": 0,
+        "reroutes": 0
+      },
+      "adaptive": {
+        "avg_trip_s": 158.7,
+        "p95_trip_s": 315.8,
+        "unfinished": 0,
+        "reroutes": 0
+      },
+      "dynamic": {
+        "avg_trip_s": 152.0,
+        "p95_trip_s": 269.5,
+        "unfinished": 0,
+        "reroutes": 49
+      },
+      "dynamic_vs_static_pct": 35.3,
+      "dynamic_vs_adaptive_pct": 4.2
+    },
+    "heavy (1000)": {
+      "static": {
+        "avg_trip_s": 587.7,
+        "p95_trip_s": 2635.7,
+        "unfinished": 0,
+        "reroutes": 0
+      },
+      "adaptive": {
+        "avg_trip_s": 179.4,
+        "p95_trip_s": 368.9,
+        "unfinished": 0,
+        "reroutes": 0
+      },
+      "dynamic": {
+        "avg_trip_s": 157.6,
+        "p95_trip_s": 278.1,
+        "unfinished": 0,
+        "reroutes": 201
+      },
+      "dynamic_vs_static_pct": 73.2,
+      "dynamic_vs_adaptive_pct": 12.2
+    },
+    "rush (1400)": {
+      "static": {
+        "avg_trip_s": 1202.6,
+        "p95_trip_s": 5103.9,
+        "unfinished": 345,
+        "reroutes": 0
+      },
+      "adaptive": {
+        "avg_trip_s": 399.0,
+        "p95_trip_s": 1977.6,
+        "unfinished": 0,
+        "reroutes": 0
+      },
+      "dynamic": {
+        "avg_trip_s": 174.9,
+        "p95_trip_s": 314.9,
+        "unfinished": 0,
+        "reroutes": 783
+      },
+      "dynamic_vs_static_pct": 85.5,
+      "dynamic_vs_adaptive_pct": 56.2
+    }
+  },
+  "algorithms": {
+    "nodes": 900,
+    "queries": 300,
+    "dijkstra": {
+      "avg_nodes_expanded": 440.7,
+      "avg_ms_per_query": 0.04
+    },
+    "astar": {
+      "avg_nodes_expanded": 154.2,
+      "avg_ms_per_query": 0.024
+    },
+    "astar_expands_fewer_pct": 65.0
+  }
+}

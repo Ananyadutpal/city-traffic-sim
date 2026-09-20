@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>City Traffic Network Simulator</title>
+<style>
+  :root {
+    --paper: #EDEFE8;
+    --panel: #F7F8F3;
+    --ink: #1D2B2E;
+    --muted: #5B6B6D;
+    --line: #CBD2C8;
+    --free: #2F7D6D;
+    --busy: #D9A441;
+    --jam: #B23A2E;
+    --incident: #6A4C9C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 56px; }
+  h1 {
+    font: 600 clamp(1.7rem, 3.4vw, 2.4rem)/1.15 "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    margin: 0 0 8px; letter-spacing: -0.01em;
+  }
+  .lede { margin: 0 0 24px; max-width: 62ch; color: var(--muted); }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; margin-bottom: 20px; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; color: var(--muted); }
+  .field output { color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 200px; accent-color: var(--free); }
+  input[type=number] {
+    width: 90px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--panel); font: inherit; color: var(--ink);
+  }
+  button {
+    padding: 9px 20px; border: 0; border-radius: 6px; background: var(--ink); color: var(--paper);
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: #2C4146; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--incident); outline-offset: 2px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0 0 16px; padding: 0; list-style: none; font-size: .88rem; color: var(--muted); }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 22px; height: 0; border-top: 4px solid; }
+  .swatch.incident { border-top-style: dashed; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+
+  .maps { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .maps { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .panel h2 { margin: 0; font: 600 1.15rem/1.3 "Iowan Old Style", Georgia, serif; }
+  .panel p { margin: 2px 0 12px; font-size: .9rem; color: var(--muted); }
+  canvas { display: block; width: 100%; aspect-ratio: 1; background: var(--paper); border-radius: 6px; }
+  dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 0; }
+  dt { font-size: .82rem; color: var(--muted); }
+  dd { margin: 0; font: 600 1.35rem/1.2 "Iowan Old Style", Georgia, serif; font-variant-numeric: tabular-nums; }
+
+  .verdict { min-height: 3.2em; margin: 22px 0 0; font: 500 1.2rem/1.4 "Iowan Old Style", Georgia, serif; }
+  .verdict strong { color: var(--free); }
+  .note { margin-top: 28px; font-size: .85rem; color: var(--muted); max-width: 70ch; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Static vs dynamic routing</h1>
+  <p class="lede">Same city, same trips, same road incidents. The left map sends every car down its free-flow route. The right map re-checks each car's route at every intersection and switches when a faster one appears.</p>
+
+  <div class="controls">
+    <label class="field"><span>Vehicles: <output id="veh-out">1000</output></span>
+      <input id="vehicles" type="range" min="300" max="1400" step="100" value="1000">
+    </label>
+    <label class="field">Seed
+      <input id="seed" type="number" min="0" value="0">
+    </label>
+    <button id="start" type="button">Start simulation</button>
+  </div>
+
+  <ul class="legend" aria-label="Map legend">
+    <li><span class="swatch" style="border-color: var(--free)"></span>Flowing</li>
+    <li><span class="swatch" style="border-color: var(--busy)"></span>Busy</li>
+    <li><span class="swatch" style="border-color: var(--jam)"></span>Jammed</li>
+    <li><span class="swatch incident" style="border-color: var(--incident)"></span>Incident</li>
+    <li><span class="dot"></span>Vehicle</li>
+  </ul>
+
+  <div class="maps">
+    <section class="panel" aria-labelledby="h-static">
+      <h2 id="h-static">Static routing</h2>
+      <p>Fastest route on an empty city, never updated.</p>
+      <canvas id="c-static" aria-label="Map of the city with static routing"></canvas>
+      <dl>
+        <div><dt>On the road</dt><dd id="s-static-active">0</dd></div>
+        <div><dt>Arrived</dt><dd id="s-static-done">0</dd></div>
+        <div><dt>Average trip</dt><dd id="s-static-avg">&ndash;</dd></div>
+      </dl>
+    </section>
+    <section class="panel" aria-labelledby="h-dynamic">
+      <h2 id="h-dynamic">Dynamic re-routing</h2>
+      <p>A* re-run at every intersection using current traffic.</p>
+      <canvas id="c-dynamic" aria-label="Map of the city with dynamic re-routing"></canvas>
+      <dl>
+        <div><dt>On the road</dt><dd id="s-dynamic-active">0</dd></div>
+        <div><dt>Arrived</dt><dd id="s-dynamic-done">0</dd></div>
+        <div><dt>Average trip</dt><dd id="s-dynamic-avg">&ndash;</dd></div>
+      </dl>
+    </section>
+  </div>
+
+  <p class="verdict" id="verdict" aria-live="polite">Press Start to run both simulations side by side.</p>
+  <p class="note">The city is synthetic (a 12 by 12 street grid with faster arterial roads) and travel time rises with the number of cars on a road. Results depend on that model. See the README for benchmark numbers averaged over several seeds.</p>
+</main>
+
+<script>
+const COLORS = { idle: '#CBD2C8', free: '#2F7D6D', busy: '#D9A441', jam: '#B23A2E', incident: '#6A4C9C', car: '#1D2B2E' };
+
+const panels = ['static', 'dynamic'].map(key => ({
+  key,
+  canvas: document.getElementById('c-' + key),
+  active: document.getElementById('s-' + key + '-active'),
+  done: document.getElementById('s-' + key + '-done'),
+  avg: document.getElementById('s-' + key + '-avg'),
+  layout: null, frame: null, ws: null, result: null,
+}));
+
+const vehiclesInput = document.getElementById('vehicles');
+const vehOut = document.getElementById('veh-out');
+const verdict = document.getElementById('verdict');
+vehiclesInput.addEventListener('input', () => { vehOut.textContent = vehiclesInput.value; });
+
+function roadColor(ratio) {
+  if (ratio <= 0) return COLORS.idle;
+  if (ratio < 0.5) return COLORS.free;
+  if (ratio < 1) return COLORS.busy;
+  return COLORS.jam;
+}
+
+function fitCanvas(p) {
+  const dpr = window.devicePixelRatio || 1;
+  const size = Math.round(p.canvas.clientWidth * dpr);
+  if (p.canvas.width !== size) { p.canvas.width = size; p.canvas.height = size; }
+}
+
+function draw(p) {
+  if (!p.layout) return;
+  fitCanvas(p);
+  const ctx = p.canvas.getContext('2d');
+  const W = p.canvas.width, dpr = window.devicePixelRatio || 1, pad = 18 * dpr;
+  ctx.clearRect(0, 0, W, W);
+
+  const xs = p.layout.nodes.map(n => n[0]), ys = p.layout.nodes.map(n => n[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scale = (W - 2 * pad) / Math.max(maxX - minX, maxY - minY);
+  const px = x => pad + (x - minX) * scale, py = y => pad + (y - minY) * scale;
+
+  const incidents = new Set(p.frame ? p.frame.incidents : []);
+  p.layout.edges.forEach(([u, v], i) => {
+    const a = p.layout.nodes[u], b = p.layout.nodes[v];
+    const ratio = p.frame ? p.frame.congestion[i] : 0;
+    ctx.beginPath();
+    ctx.moveTo(px(a[0]), py(a[1])); ctx.lineTo(px(b[0]), py(b[1]));
+    ctx.lineWidth = (p.layout.arterial[i] ? 3.6 : 1.8) * dpr;
+    ctx.strokeStyle = roadColor(ratio);
+    ctx.setLineDash([]);
+    ctx.stroke();
+    if (incidents.has(i)) {
+      ctx.lineWidth = 3.6 * dpr; ctx.strokeStyle = COLORS.incident;
+      ctx.setLineDash([6 * dpr, 4 * dpr]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  });
+
+  if (p.frame) {
+    ctx.fillStyle = COLORS.car;
+    ctx.globalAlpha = 0.75;
+    for (const [x, y] of p.frame.cars) {
+      ctx.beginPath(); ctx.arc(px(x), py(y), 2.2 * dpr, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function showStats(p) {
+  const f = p.frame;
+  p.active.textContent = f.active.toLocaleString();
+  p.done.textContent = f.finished.toLocaleString();
+  p.avg.textContent = f.avg_trip_s == null ? '\u2013' : Math.round(f.avg_trip_s) + ' s';
+}
+
+function finish() {
+  if (!panels.every(p => p.result)) return;
+  const s = panels[0].result.avg_trip_s, d = panels[1].result.avg_trip_s;
+  const pct = Math.round(100 * (s - d) / s);
+  verdict.innerHTML = pct > 0
+    ? `Dynamic re-routing cut the average trip from <strong>${Math.round(s)} s to ${Math.round(d)} s</strong>, ${pct}% faster.`
+    : `Both strategies finished in about the same time (${Math.round(s)} s and ${Math.round(d)} s). Try more vehicles.`;
+  document.getElementById('start').textContent = 'Run again';
+}
+
+function start() {
+  panels.forEach(p => { if (p.ws) p.ws.close(); });
+  verdict.textContent = 'Running\u2026';
+  const seed = document.getElementById('seed').value || 0;
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+
+  panels.forEach(p => {
+    p.layout = null; p.frame = null; p.result = null;
+    p.active.textContent = '0'; p.done.textContent = '0'; p.avg.textContent = '\u2013';
+    const url = `${scheme}://${location.host}/ws/simulate?strategy=${p.key}&seed=${seed}&vehicles=${vehiclesInput.value}`;
+    p.ws = new WebSocket(url);
+    p.ws.onmessage = ev => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'layout') { p.layout = msg; draw(p); }
+      else if (msg.type === 'frame') { p.frame = msg; showStats(p); draw(p); }
+      else if (msg.type === 'done') { p.result = msg.results; finish(); }
+      else if (msg.type === 'error') { verdict.textContent = msg.detail; }
+    };
+    p.ws.onerror = () => { verdict.textContent = 'Could not reach the simulation server. Is uvicorn running?'; };
+  });
+}
+
+document.getElementById('start').addEventListener('click', start);
+window.addEventListener('resize', () => panels.forEach(draw));
+</script>
+</body>
+</html>

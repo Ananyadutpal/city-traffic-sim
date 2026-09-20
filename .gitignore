@@ -1,0 +1,7 @@
+traffic
+traffic.exe
+run_tests
+run_tests.exe
+__pycache__/
+.pytest_cache/
+.venv/
