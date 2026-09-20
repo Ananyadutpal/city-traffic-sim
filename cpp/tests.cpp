@@ -40,7 +40,6 @@ Config smallConfig() {
     return c;
 }
 
-// ---------- city ----------
 
 void testCity() {
     Network net = makeCity(12, 12, 0);
